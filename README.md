@@ -1,6 +1,6 @@
 # Some_work
 
-Some short example of some work that I have done
+Some short example of some work that I have done in C++.
 
 messages.h :: a template function to help comunicate between GUI components and DSP classes
 
