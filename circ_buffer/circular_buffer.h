@@ -1,9 +1,18 @@
 /*
+  ==============================================================================
+
+    rollingBuffer.h
+    Created: 22 Sep 2019 7:36:11pm
+    Author:  William James
+
+  ==============================================================================
+*/
+
+#pragma once
+
+/*
  A simple rolling Buffer that is designed for use in audio aplications that either syncronize reading a writing e.g a delay or phaser effect, or that ensure that there is only one thread reading and one writing at any time. e.g filling a buffer of audio data to be used for visualisation such as a spectogram or oscilloscope in a GUI.
  
- One must remember if using this that the write point is allowed to overtake the read point in this design
-    and may cause unexpected behavior and nont continuos reads of data if read and write are not
-    synchronised and if the read_chunk or read_value functions are being used.
 */
 
 #include <iostream>
@@ -47,7 +56,7 @@ public:
     */
     int read_total(type* ptr, bool mark_as_empty = false)
     {
-    	
+        
         //if buffer is not full, return as many as have been written
         if (num_values_added < bufferlen) {
             //this shouldnt be used
@@ -64,7 +73,7 @@ public:
         //buffer_mutex.unlock();
 
         if (mark_as_empty) {
-        	num_values_added = 0;
+            num_values_added = 0;
         }
         buffer_mutex.unlock();
         return 1;
@@ -78,40 +87,40 @@ public:
 
     int write_chunk(type* ptr, int len) {
 
-    	//std::cout << "Write called\n";
-    	if (len > bufferlen) {
-    		std::cout << "chunk is greater than buffer len";
-    		return 0;
-    	}
+        //std::cout << "Write called\n";
+        if (len > bufferlen) {
+            std::cout << "chunk is greater than buffer len";
+            return 0;
+        }
 
-    	if (check_for_overlap && (amount_to_read + len > bufferlen)) {
-    		//std::cout << "not enought space to write || amount_to_read : " << amount_to_read << " len : " << len << "\n";
-    		return 0;
-    	}
-    	buffer_mutex.lock();
-    	if (len > bufferlen) {
-    		//only write the last {bufferlen} values
-    		ptr += (len-bufferlen);
-    		len = bufferlen;
-    	}
+        if (check_for_overlap && (amount_to_read + len > bufferlen)) {
+            //std::cout << "not enought space to write || amount_to_read : " << amount_to_read << " len : " << len << "\n";
+            return 0;
+        }
+        buffer_mutex.lock();
+        if (len > bufferlen) {
+            //only write the last {bufferlen} values
+            ptr += (len-bufferlen);
+            len = bufferlen;
+        }
 
-    	
-    	//if write chunk + len < bufferlen simply copy
-    	if ( write_ind+len <= bufferlen ) {
-    		//buffer_mutex.lock();
-    		memcpy(buffer + write_ind, ptr, len*sizeof(type));
-    		//buffer_mutex.unlock();
+        
+        //if write chunk + len < bufferlen simply copy
+        if ( write_ind+len <= bufferlen ) {
+            //buffer_mutex.lock();
+            memcpy(buffer + write_ind, ptr, len*sizeof(type));
+            //buffer_mutex.unlock();
             write_ind += len;
-    	
-    	}
-    	//else will wrap around the end of the buffer
-    	else {
+        
+        }
+        //else will wrap around the end of the buffer
+        else {
 
-    		//first copy onto the end of the buffer
-    		int writeAmount = (bufferlen-write_ind);
-    		//buffer_mutex.lock();
-    		memcpy(buffer + write_ind, ptr, writeAmount*sizeof(type));
-    		//buffer_mutex.unlock();
+            //first copy onto the end of the buffer
+            int writeAmount = (bufferlen-write_ind);
+            //buffer_mutex.lock();
+            memcpy(buffer + write_ind, ptr, writeAmount*sizeof(type));
+            //buffer_mutex.unlock();
 
             //write the next onto the beggining of the buffer
             //buffer_mutex.lock();
@@ -122,18 +131,18 @@ public:
             //add to num values added for
             
 
-    	}
-    	num_values_added += len;
-    	amount_to_read += len;
-    	//std::cout << "amount to read changed in WRITE thread || is : " << amount_to_read << "\n";
-    	//catch this possability
-    	if (write_ind == bufferlen) {
-    		write_ind = 0;
-    	}
+        }
+        num_values_added += len;
+        amount_to_read += len;
+        //std::cout << "amount to read changed in WRITE thread || is : " << amount_to_read << "\n";
+        //catch this possability
+        if (write_ind == bufferlen) {
+            write_ind = 0;
+        }
 
-    	buffer_mutex.unlock();
+        buffer_mutex.unlock();
 
-    	return 1;
+        return 1;
 
     }
 
@@ -143,43 +152,43 @@ public:
         If the requested is larger than the buffer length the function will return 0.
     */
 
-    int read_chunk(type* ptr, int len) 
+    int read_chunk(type* ptr, int len)
     {
-    	
-    	if (check_for_overlap && (amount_to_read < len)) {
-    		//std::cout << "Read Regected || len : " << len << ", amount_to_read : " << amount_to_read << "\n";
-    		return 0;
-    	}
-    	buffer_mutex.lock();
-    	//if no overlap, simply copy the data
-    	if (read_ind+len <= bufferlen) {
+        
+        if (check_for_overlap && (amount_to_read < len)) {
+            //std::cout << "Read Regected || len : " << len << ", amount_to_read : " << amount_to_read << "\n";
+            return 0;
+        }
+        buffer_mutex.lock();
+        //if no overlap, simply copy the data
+        if (read_ind+len <= bufferlen) {
 
-    		//buffer_mutex.lock();
-    		memcpy(ptr, buffer + read_ind, len*sizeof(type));
-    		//buffer_mutex.unlock();
+            //buffer_mutex.lock();
+            memcpy(ptr, buffer + read_ind, len*sizeof(type));
+            //buffer_mutex.unlock();
             read_ind += len;
-    	
-    	}
-    	
-    	//else the copy will be done in two parts as it overlaps the buffer array
-    	else {
+        
+        }
+        
+        //else the copy will be done in two parts as it overlaps the buffer array
+        else {
 
-    		int read_amount = bufferlen-read_ind;
-    		//buffer_mutex.lock();
-    		memcpy(ptr, buffer + read_ind, sizeof(type) * read_amount );
-    		memcpy(ptr+read_amount, buffer, sizeof(type) * (len-read_amount));
-    		//buffer_mutex.unlock();
-    		read_ind = len-read_amount;
+            int read_amount = bufferlen-read_ind;
+            //buffer_mutex.lock();
+            memcpy(ptr, buffer + read_ind, sizeof(type) * read_amount );
+            memcpy(ptr+read_amount, buffer, sizeof(type) * (len-read_amount));
+            //buffer_mutex.unlock();
+            read_ind = len-read_amount;
 
-    	}
-    	amount_to_read -= len;
-    	//std::cout << "amount to read changed in read thread || is : " << amount_to_read << "\n";
-    	//catch this possability
-    	if (read_ind == bufferlen) {
-    		read_ind = 0;
-    	}
+        }
+        amount_to_read -= len;
+        //std::cout << "amount to read changed in read thread || is : " << amount_to_read << "\n";
+        //catch this possability
+        if (read_ind == bufferlen) {
+            read_ind = 0;
+        }
 
-    	buffer_mutex.unlock();
-    	return 1;
+        buffer_mutex.unlock();
+        return 1;
     }
 };
