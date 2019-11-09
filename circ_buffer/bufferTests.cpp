@@ -1,5 +1,5 @@
 
-//compile with :: g++ -o bufferTests bufferTests.cpp
+//compile with :: g++ -o bufferTests bufferTests.cpp -pthread -g
 #include <thread>         // std::thread
 #include "circular_buffer.h"
 
@@ -239,7 +239,7 @@ int test_writeChunk_and_readTotal(int dataLen, int chunkSize, int bufferLen)
 	int fail_count = 0;
 	for (int i = 1; i < bufferLen; i++) 
 	{
-		if (!total_read[i] == total_read[i-1] + 1) {
+		if (!(total_read[i] == total_read[i-1] + 1)) {
 			cout << "Failure on line : " << i << ", value : " << total_read[i] << "\n"; 
 			fail_count++;
 		} 
